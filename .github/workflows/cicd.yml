@@ -1,0 +1,75 @@
+name: DevSecOps CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # Job 1: Build and Run Tests
+  ci-build-test:
+    name: CI - Build and Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js v20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test
+
+  # Job 2: Static Application Security Testing (SCA) with Snyk
+  security-snyk:
+    name: SCA Security - Snyk
+    needs: ci-build-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Snyk to check for high severity vulnerabilities
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+
+  # Job 3: Simulated Continuous Deployment (CD) to Kubernetes
+  cd-deploy-k8s:
+    name: CD - Kubernetes Deployment Simulation
+    needs: security-snyk
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Simulate Kubernetes Deployment
+        run: |
+          echo "=== Starting Kubernetes Deployment Simulation ==="
+          echo "Checking manifest syntax..."
+          
+          echo "Simulating: kubectl apply -f k8s/prometheus-config.yaml"
+          echo "ConfigMap prometheus-server-conf created/updated successfully."
+          
+          echo "Simulating: kubectl apply -f k8s/app-deployment.yaml"
+          echo "Deployment.apps/lab-devops-app created/updated successfully."
+          echo "Service/lab-devops-app-service created/updated successfully."
+          
+          echo "Simulating: kubectl apply -f k8s/grafana-deploy.yaml"
+          echo "Deployment.apps/grafana created/updated successfully."
+          echo "Service/grafana-service created/updated successfully."
+          
+          echo "Simulating: kubectl rollout status deployment/lab-devops-app"
+          echo "Waiting for deployment 'lab-devops-app' rollout to finish: 0 of 2 updated replicas are available..."
+          echo "deployment 'lab-devops-app' successfully rolled out"
+          
+          echo "=== CD Deployment Simulation Completed ==="
